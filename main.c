@@ -64,6 +64,7 @@ struct block {
 int start = 1;           // O estado atual entre o jogo estar iniciado ou não
 int startCount;          // O temporizador para o intervalo no inicio do jogo
 int running = 0;         // O estado sobre o jogo estar rodando ou nao
+int winCount = 0;        // O temporizador para o tempo que a tela de vitória ficará na tela
 int points;              // Os pontos do jogador
 int ballPosition[2];     // A posição atual da bola
 int ballDirection[2];    // A direção que a bola esta se deslocando
@@ -83,7 +84,7 @@ void checkCollision(int newPosition[2]);
 void drawBall();
 void endGame();
 void resetGame();
-
+void verifyWin();
 
 // Rotina de tratamento da interrupção do temporizador
 ISR(TIMER1_COMPA_vect) {
@@ -93,6 +94,9 @@ ISR(TIMER1_COMPA_vect) {
     }
     else if (running) {
         moveBall();
+    }
+    if (winCount != 0) {
+        winCount--;
     }
 }
 
@@ -156,8 +160,14 @@ int main(void)
         drawBar();
 
         if (start) { // Se o jogo ainda não foi iniciado, espera para pressionar o botão
-            nokia_lcd_set_cursor(10,20);
-            nokia_lcd_write_string("PRESS START",1);
+            if (winCount == 0) {
+                nokia_lcd_set_cursor(10,20);
+                nokia_lcd_write_string("PRESS START",1);
+            }
+            else {
+                nokia_lcd_set_cursor(4,20);
+                nokia_lcd_write_string("YOU WIN",2);
+            }
         }
         else { // Se o jogo já tiver sido iniciado, desenha a bola e os blocos
             drawBall();
@@ -394,12 +404,14 @@ void checkCollision(int newPosition[2]) {
                     ballTrajectory[0] = ballTrajectory[0] * (-1);
                     blocks[i].active = 0;
                     points++;
+                    verifyWin();
                 }
                 if (((y+1) == blocks[i].up || (y-1) == blocks[i].down) && x > blocks[i].left-1 && x < blocks[i].right+1) {
                     ballDirection[1] = ballDirection[1] * (-1);
                     ballTrajectory[1] = ballTrajectory[1] * (-1);
                     blocks[i].active = 0;
                     points++;
+                    verifyWin();
                 }
             }
         }
@@ -457,4 +469,14 @@ void resetGame() {
     blocks[10] = b11;
     struct block b12 = { 25, 29, 64, 80, 1 };
     blocks[11] = b12;
+}
+
+void verifyWin() {
+    for (int i = 0; i < 12; i++) {
+        if (blocks[i].active == 1) {
+            return;
+        }
+    }
+    endGame();
+    winCount = 30;
 }
